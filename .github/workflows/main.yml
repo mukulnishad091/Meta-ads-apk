@@ -12,18 +12,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
       - name: Extract project
         run: |
           unzip -o Meta_ads_Android_Project_Custom_Logo_Exact.zip -d extracted
-          find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \)
+          PROJECT_FILE=$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)
+          if [ -z "$PROJECT_FILE" ]; then echo 'ERROR: Android Gradle project settings file not found in ZIP'; exit 1; fi
+          echo "PROJECT_DIR=$(dirname "$PROJECT_FILE")" >> "$GITHUB_ENV"
       - name: Build APK
         run: |
-          PROJECT_DIR=$(dirname "$(find extracted -type f \( -name settings.gradle -o -name settings.gradle.kts \) | head -n 1)")
           cd "$PROJECT_DIR"
-          chmod +x gradlew
-          ./gradlew assembleDebug
+          if [ -f gradlew ]; then chmod +x gradlew; ./gradlew assembleDebug; else gradle assembleDebug; fi
       - uses: actions/upload-artifact@v4
         with:
           name: Meta-ads-APK
-          path: extracted/**/app/build/outputs/apk/debug/*.apk
+          path: "${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk"
           if-no-files-found: error
